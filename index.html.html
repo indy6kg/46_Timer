@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="4:6タイマー">
+<title>4:6メソッド タイマー</title>
+<style>
+  /* ===== 配色（ライト／ダーク） ===== */
+  :root {
+    --bg: #ECEFF1;
+    --ink: #2B1E18;
+    --muted: #6B6058;
+    --blue: #2E5E8E;         /* 前半：甘み・酸味 */
+    --blue-track: #CFDCEA;
+    --brown: #8A5330;        /* 後半：濃度 */
+    --brown-track: #E0D6CE;
+    --on-blue: #FFFFFF;
+    --flash: #FFF0B8;        /* 投の切り替わりで一瞬光る色 */
+    --idle-track: #D8DDE1;   /* 待機中のリングの色 */
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1B1512;
+      --ink: #F0E8E2;
+      --muted: #A9998E;
+      --blue: #7FAEDD;
+      --blue-track: #2B3B4B;
+      --brown: #C58A5E;
+      --brown-track: #3A2E27;
+      --on-blue: #10202F;
+      --flash: #4A3B12;
+      --idle-track: #2E2622;
+      color-scheme: dark;
+    }
+  }
+
+  /* ===== 全体 ===== */
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  main {
+    min-height: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 20px 16px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 前半(a)・後半(b)の色。バー・凡例・説明文で共通に使う */
+  .a { --tone: var(--blue);  --track: var(--blue-track); }
+  .b { --tone: var(--brown); --track: var(--brown-track); }
+
+  /* ===== 次の注湯までのリング（主役） ===== */
+  .pour {
+    padding: 4px 12px 10px;
+    border-radius: 28px;
+    text-align: center;
+  }
+  .pour.flash { animation: flash 0.9s ease-out; }
+  @keyframes flash {
+    from { background: var(--flash); }
+    to   { background: transparent; }
+  }
+  .ring {
+    position: relative;
+    width: min(70vw, 260px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+  }
+  .ring svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 12; }
+  .ring-track { stroke: var(--track, var(--idle-track)); }
+  .ring-arc   { stroke: var(--tone, var(--muted)); stroke-linecap: round; }
+  .ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .rc-n { font-size: clamp(20px, 6vw, 26px); font-weight: 700; color: var(--tone, var(--muted)); }
+  .rc-v {
+    font-size: clamp(56px, 18vw, 76px);
+    font-weight: 600;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+  }
+  .rc-v small { margin-left: 4px; font-size: 0.32em; font-weight: 600; }
+  .rc-s { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pour.idle .rc-v { color: var(--muted); }
+  .pour.done .rc-n { color: var(--ink); }
+
+  .phase {
+    margin: 8px 0 0;
+    min-height: 1.5em;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tone, var(--muted));
+  }
+  .pour.done .phase { color: var(--muted); }
+
+  /* ===== 経過時間・次の合図 ===== */
+  .time {
+    margin-top: 4px;
+    text-align: center;
+    font-size: clamp(56px, 17vw, 84px);
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .next {
+    margin-top: 2px;
+    min-height: 1.6em;
+    text-align: center;
+    font-size: 16px;
+    color: var(--muted);
+  }
+  .next b {
+    margin-left: 6px;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  /* ===== タイムライン ===== */
+  .timeline { display: flex; gap: 4px; margin-top: 18px; }
+  .cell { min-width: 0; }
+  .bar {
+    position: relative;
+    height: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--track);
+  }
+  .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--tone); }
+  .lab {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 8px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  .lab .k { margin-right: 4px; font-size: 16px; font-weight: 700; }
+  .cell.now .lab { color: var(--ink); }
+  .cell.now .lab .k { font-size: 20px; }
+
+  /* ===== 粉量 ===== */
+  .dose {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .dose-l { font-size: 14px; color: var(--muted); }
+  .dose-v { min-width: 3.2em; text-align: center; font-size: 22px; font-weight: 700; }
+  .dose-w { margin-left: 6px; font-size: 14px; color: var(--muted); }
+  .step {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--ink);
+    border-radius: 22px;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .step:disabled { opacity: .3; cursor: default; }
+  .step:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+  /* ===== 操作 ===== */
+  .controls { display: flex; gap: 12px; margin-top: auto; padding-top: 20px; }
+  .btn {
+    flex: 1;
+    min-height: 68px;
+    border: 2px solid var(--ink);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn.start { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
+  .btn:disabled { opacity: .3; cursor: default; }
+  .btn:focus-visible, .link:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
+  .link {
+    padding: 10px 4px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .note { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pour.flash { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <section class="pour idle" id="pour">
+    <div class="ring">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="ring-track" cx="100" cy="100" r="88"/>
+        <circle class="ring-arc" id="ringArc" cx="100" cy="100" r="88"/>
+      </svg>
+      <div class="ring-center" id="ringCenter"></div>
+    </div>
+    <p class="phase" id="phase" aria-live="polite"></p>
+  </section>
+
+  <div class="time" id="time" role="timer" aria-label="経過時間"></div>
+  <div class="next" id="next"></div>
+
+  <div class="timeline" id="timeline" aria-hidden="true"></div>
+  <div class="dose">
+    <span class="dose-l">粉量</span>
+    <button class="step" id="doseDown" aria-label="粉量を1g減らす">−</button>
+    <span class="dose-v" id="doseVal"></span>
+    <button class="step" id="doseUp" aria-label="粉量を1g増やす">＋</button>
+    <span class="dose-w" id="doseWater"></span>
+  </div>
+
+  <div class="controls">
+    <button class="btn start" id="btnStart">開始</button>
+    <button class="btn" id="btnStop" disabled>停止</button>
+  </div>
+
+  <div class="foot">
+    <button class="link" id="btnReset">リセット</button>
+    <button class="link" id="btnTest">音を確認</button>
+  </div>
+  <p class="note" id="note">音が出ないときは、iPhoneの消音スイッチ（側面）をオフにして、音量を上げてください。</p>
+</main>
+
+<!-- NoSleep.js (MIT License) の無音動画。iOSで画面のスリープを防ぐために使う -->
+<script>
+const NOSLEEP_MP4 = "data:video/mp4;base64,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";
+</script>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ==================================================================
+   * 設定
+   * ================================================================== */
+
+  // 4:6メソッドの抽出スケジュール（秒）
+  //   phase: 'a' = 前半40%（甘み・酸味を決める） / 'b' = 後半60%（濃度を決める）
+  //   pct  : 湯量全体に対する割合（%）。前半2回で40%、後半3回で60%（各20%ずつ）
+  const POURS = [
+    { start: 0,   end: 45,  phase: 'a', pct: 20 },   // 1投目
+    { start: 45,  end: 90,  phase: 'a', pct: 20 },   // 2投目
+    { start: 90,  end: 135, phase: 'b', pct: 20 },   // 3投目
+    { start: 135, end: 165, phase: 'b', pct: 20 },   // 4投目
+    { start: 165, end: 210, phase: 'b', pct: 20 },   // 5投目
+  ];
+  const FINISH = 210;                                   // 3:30 抽出終了
+  const DONE = POURS.length;                            // 「抽出完了」を表すインデックス
+  const POUR_CHANGES = POURS.slice(1).map(p => p.start); // 投の切り替え合図：45・90・135・165秒
+  const PHASE_TEXT = {
+    a: '甘み・酸味を決める（前半40%）',
+    b: '濃度を決める（後半60%）',
+  };
+
+  // 粉量と湯量：湯量 = 粉量 × 15（例：20g → 300ml）
+  const WATER_PER_G = 15;
+  const DOSE = { min: 5, max: 60, initial: 20, storeKey: 'v46-dose' };
+
+  let dose = loadDose();                                  // 粉量(g)。前回の設定を覚えておく
+  const totalWater = () => dose * WATER_PER_G;
+  // i投目までの累計湯量。累計から求めるので、端数が出てもずれない
+  const cumulativeWater = i =>
+    Math.round(totalWater() * POURS.slice(0, i + 1).reduce((sum, p) => sum + p.pct, 0) / 100);
+  const pourWater = i => cumulativeWater(i) - (i > 0 ? cumulativeWater(i - 1) : 0);
+
+  function loadDose() {
+    try {
+      const v = parseInt(localStorage.getItem(DOSE.storeKey), 10);
+      if (v >= DOSE.min && v <= DOSE.max) return v;
+    } catch (e) {}
+    return DOSE.initial;
+  }
+  function saveDose() {
+    try { localStorage.setItem(DOSE.storeKey, String(dose)); } catch (e) {}
+  }
+
+  // 音の設定
+  const SOUND = {
+    volume: 0.6,           // 全体の音量（0〜1）。大きい／小さいと感じたらここだけ調整する
+    signalFreq: 1047,      // 開始・投の切り替え（ド）
+    stopFreq: 784,         // 停止（ソ・低め）
+    signalGap: 0.34,       // 2回鳴らすときの間隔（秒）
+    lead: 0.02,            // 「今すぐ鳴らす」ときの遅延（秒）
+    chime: { peak: 0.85, attack: 0.015, hold: 0.07, decay: 0.32,
+             partials: [{ ratio: 1, level: 1 }, { ratio: 2, level: 0.22 }] },
+    beepVolume: 0.9,       // 終了音の音量（最大 1.0）
+    finishNotes: [         // 終了音：ド・ミ・ソと上がり、最後を長めに
+      { at: 0.00, freq: 1047, dur: 0.15 },
+      { at: 0.20, freq: 1319, dur: 0.15 },
+      { at: 0.40, freq: 1568, dur: 0.60 },
+    ],
+  };
+
+  /* ==================================================================
+   * ユーティリティ
+   * ================================================================== */
+
+  const $ = id => document.getElementById(id);
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  // 失敗しても止まらないように包む（Promiseを返さない古いAPIにも対応）
+  const quiet = fn => {
+    try { return Promise.resolve(fn()).catch(() => {}); }
+    catch (e) { return Promise.resolve(); }
+  };
+
+  // 秒 → m:ss
+  const formatTime = sec => {
+    sec = Math.max(0, Math.floor(sec));
+    const s = sec % 60;
+    return `${Math.floor(sec / 60)}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  // 内容が変わったときだけ書き換える（無駄な再描画と読み上げを避ける）
+  const setHTML = (el, html) => {
+    if (el._html !== html) { el._html = html; el.innerHTML = html; }
+  };
+
+  // 経過秒 → 今何投目か（0始まり。終了後は DONE）
+  const pourIndexAt = t => {
+    if (t >= FINISH) return DONE;
+    for (let i = POURS.length - 1; i > 0; i--) if (t >= POURS[i].start) return i;
+    return 0;
+  };
+
+  /* ==================================================================
+   * 音（Web Audio）
+   * ================================================================== */
+
+  const sound = (() => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let ctx = null;
+    let nodes = [];                       // 予約済みの音（停止時にまとめて取り消す）
+
+    const isRunning = () => !!ctx && ctx.state === 'running';
+
+    // AudioContextを用意する。iOSではタップと同じ処理の中で呼ぶ必要がある
+    function getContext() {
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}  // 消音スイッチ対策
+      if (!ctx && AudioCtx) { try { ctx = new AudioCtx(); } catch (e) {} }
+      if (ctx && ctx.state === 'suspended') quiet(() => ctx.resume());
+      return ctx;
+    }
+
+    // 音が鳴らせる状態になるのを待つ（最大0.5秒）。鳴らせなければ null
+    async function ready() {
+      const c = getContext();
+      if (!c) return null;
+      if (c.state !== 'running') await Promise.race([quiet(() => c.resume()), wait(500)]);
+      return isRunning() ? c : null;
+    }
+
+    // 角ばったビープ（終了音用）
+    function beep(when, freq, dur) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const v = SOUND.beepVolume * SOUND.volume;
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, when);
+      gain.gain.linearRampToValueAtTime(v, when + 0.005);
+      gain.gain.setValueAtTime(v, when + dur - 0.02);       // 終わりぎわまで音量を保つ
+      gain.gain.linearRampToValueAtTime(0.0001, when + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(when);
+      osc.stop(when + dur + 0.05);
+      nodes.push(osc);
+    }
+
+    // やさしいチャイム音（基音＋2倍音。やわらかく立ち上がり、余韻を残して消える）
+    function chime(when, freq) {
+      const { attack, hold, decay, partials } = SOUND.chime;
+      const peak = SOUND.chime.peak * SOUND.volume;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, when);
+      master.gain.linearRampToValueAtTime(peak, when + attack);
+      master.gain.setValueAtTime(peak, when + hold);
+      master.gain.exponentialRampToValueAtTime(0.001, when + decay);
+      master.connect(ctx.destination);
+
+      const total = partials.reduce((sum, p) => sum + p.level, 0);
+      partials.forEach(p => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq * p.ratio;
+        gain.gain.value = p.level / total;
+        osc.connect(gain); gain.connect(master);
+        osc.start(when);
+        osc.stop(when + decay + 0.04);
+        nodes.push(osc);
+      });
+    }
+
+    // 「ポン、ポン」と2回
+    function signal(when, freq = SOUND.signalFreq) {
+      chime(when, freq);
+      chime(when + SOUND.signalGap, freq);
+    }
+
+    // 終了の合図
+    function finish(when) {
+      SOUND.finishNotes.forEach(n => beep(when + n.at, n.freq, n.dur));
+    }
+
+    return {
+      supported: !!AudioCtx,
+      ready,
+
+      // 開始時に、開始音・各投の合図・終了音をまとめて予約する（画面が暗くなってもずれない）
+      scheduleAll() {
+        if (!isRunning()) return;
+        const base = ctx.currentTime;
+        signal(base);
+        POUR_CHANGES.forEach(t => signal(base + t));
+        finish(base + FINISH);
+      },
+
+      cancelAll() {
+        nodes.forEach(osc => {
+          try { osc.stop(); } catch (e) {}
+          try { osc.disconnect(); } catch (e) {}
+        });
+        nodes = [];
+      },
+
+      playStop() { if (isRunning()) signal(ctx.currentTime + SOUND.lead, SOUND.stopFreq); },
+
+      async test() {
+        if (await ready()) signal(ctx.currentTime + SOUND.lead);
+      },
+    };
+  })();
+
+  /* ==================================================================
+   * 画面を消さない
+   *   標準の Wake Lock API と、音なし動画を流し続ける方式（NoSleep.js）を併用。
+   *   iOSのホーム画面アプリでは Wake Lock が効かない版があるため、動画方式で補う。
+   * ================================================================== */
+
+  const keepAwake = (() => {
+    let wakeLock = null;
+    let video = null;
+
+    function getVideo() {
+      if (video) return video;
+      video = document.createElement('video');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('muted', '');
+      video.setAttribute('title', 'No Sleep');
+      video.muted = true;
+      const source = document.createElement('source');
+      source.src = NOSLEEP_MP4;
+      source.type = 'video/mp4';
+      video.appendChild(source);
+      video.addEventListener('loadedmetadata', () => {
+        video.addEventListener('timeupdate', () => {      // 終わりに達しないよう再生位置を戻し続ける
+          if (video.currentTime > 0.5) video.currentTime = Math.random();
+        });
+      });
+      return video;
+    }
+
+    return {
+      on() {
+        if ('wakeLock' in navigator) {
+          quiet(() => navigator.wakeLock.request('screen').then(lock => { wakeLock = lock; }));
+        }
+        quiet(() => getVideo().play());
+      },
+      off() {
+        if (wakeLock) quiet(() => wakeLock.release());
+        wakeLock = null;
+        if (video) video.pause();
+      },
+    };
+  })();
+
+  /* ==================================================================
+   * 画面表示
+   * ================================================================== */
+
+  const view = (() => {
+    const el = {
+      pour: $('pour'), ringArc: $('ringArc'), ringCenter: $('ringCenter'), phase: $('phase'),
+      time: $('time'), next: $('next'),
+      start: $('btnStart'), stop: $('btnStop'),
+      doseVal: $('doseVal'), doseWater: $('doseWater'), doseDown: $('doseDown'), doseUp: $('doseUp'),
+    };
+
+    // リング：次の注湯までの残り時間を、円弧の長さで表す
+    const RING_LENGTH = 2 * Math.PI * 88;                    // SVGの円周（半径88）
+    el.ringArc.style.strokeDasharray = `${RING_LENGTH} ${RING_LENGTH}`;
+
+    // タイムライン（5つのバー）を作る
+    const cells = POURS.map((pour, i) => {
+      const cell = document.createElement('div');
+      cell.className = `cell ${pour.phase}`;
+      cell.style.flex = `${pour.end - pour.start} 1 0`;    // 長さに比例した幅
+      const endLabel = i === POURS.length - 1 ? `<span>${formatTime(FINISH)}</span>` : '';
+      cell.innerHTML =
+        '<div class="bar"><div class="fill"></div></div>' +
+        `<div class="lab"><span><span class="k">${i + 1}</span>${formatTime(pour.start)}</span>${endLabel}</div>`;
+      $('timeline').appendChild(cell);
+      return { cell, fill: cell.querySelector('.fill'), pour };
+    });
+
+    const center = (label, ml, sub) =>
+      `<span class="rc-n">${label}</span><span class="rc-v">${ml}<small>ml</small></span><span class="rc-s">${sub}</span>`;
+
+    // リングの中身：今何投目か・今回注ぐ量・累計
+    function renderPour(state, pourIdx) {
+      const idle = state === 'idle';
+      const done = !idle && pourIdx === DONE;
+      const shown = idle ? 0 : Math.min(pourIdx, DONE - 1);
+      const phase = POURS[shown].phase;
+
+      el.pour.classList.toggle('idle', idle);
+      el.pour.classList.toggle('done', done);
+      el.pour.classList.toggle('a', !idle && !done && phase === 'a');
+      el.pour.classList.toggle('b', !idle && !done && phase === 'b');
+
+      if (done) {
+        setHTML(el.ringCenter, center('抽出完了', totalWater(), '合計'));
+        setHTML(el.phase, 'ドリッパーを外しましょう');
+      } else {
+        setHTML(el.ringCenter, center(`${shown + 1}投目`, pourWater(shown), `累計 ${cumulativeWater(shown)}ml`));
+        setHTML(el.phase, idle ? '開始を押すと計測がはじまります' : PHASE_TEXT[phase]);
+      }
+    }
+
+    // リング：投のはじめは一周、次の注湯の時刻に近づくほど短くなる（上から時計回りに消えていく）
+    function renderRing(state, pourIdx, t) {
+      let ratio;
+      if (state === 'idle' || pourIdx === DONE) ratio = 0;                 // 待機中・終了後は薄い輪だけ表示
+      else {
+        const p = POURS[pourIdx];
+        ratio = Math.min(1, Math.max(0, (p.end - t) / (p.end - p.start)));
+      }
+      el.ringArc.style.strokeDashoffset = (-RING_LENGTH * (1 - ratio)).toFixed(2);
+      el.ringArc.style.visibility = ratio > 0.002 ? 'visible' : 'hidden';
+    }
+
+    function renderNext(state, pourIdx, t) {
+      let html;
+      if (state === 'idle') {
+        html = '合図：' + [...POUR_CHANGES, FINISH].map(formatTime).join(' / ');
+      } else if (state === 'stopped') {
+        html = '停止中';
+      } else if (pourIdx === DONE) {
+        html = `${formatTime(FINISH)}を過ぎました。落ち切ったら停止`;
+      } else {
+        const isLast = pourIdx === DONE - 1;
+        const target = isLast ? FINISH : POURS[pourIdx].end;
+        const label = isLast ? '終了まで' : `${pourIdx + 2}投目まで`;
+        html = `${label}<b>${formatTime(Math.ceil(target - t))}</b>`;
+      }
+      setHTML(el.next, html);
+    }
+
+    function renderTimeline(state, pourIdx, t) {
+      cells.forEach(({ cell, fill, pour }, i) => {
+        const ratio = state === 'idle' ? 0 : Math.min(1, Math.max(0, (t - pour.start) / (pour.end - pour.start)));
+        fill.style.width = `${(ratio * 100).toFixed(2)}%`;
+        cell.classList.toggle('now', state !== 'idle' && pourIdx === i);
+      });
+    }
+
+    function renderDose(state) {
+      setHTML(el.doseVal, `${dose}g`);
+      setHTML(el.doseWater, `湯量 ${totalWater()}ml`);
+      el.doseDown.disabled = state === 'running' || dose <= DOSE.min;   // 計測中は変えられない
+      el.doseUp.disabled = state === 'running' || dose >= DOSE.max;
+    }
+
+    el.pour.addEventListener('animationend', () => el.pour.classList.remove('flash'));
+
+    return {
+      render({ state, t, pourIdx }) {
+        renderPour(state, pourIdx);
+        renderRing(state, pourIdx, t);
+        setHTML(el.time, formatTime(t));
+        renderNext(state, pourIdx, t);
+        renderTimeline(state, pourIdx, t);
+        renderDose(state);
+        el.start.disabled = state === 'running';
+        el.stop.disabled = state !== 'running';
+      },
+
+      // 投が切り替わった一瞬だけ背景を光らせる（音が出せないときの保険）
+      flash() {
+        el.pour.classList.remove('flash');
+        void el.pour.offsetWidth;          // アニメーションを最初からやり直すため
+        el.pour.classList.add('flash');
+      },
+    };
+  })();
+
+  /* ==================================================================
+   * タイマー本体
+   * ================================================================== */
+
+  let state = 'idle';        // idle（待機） | running（計測中） | stopped（停止）
+  let startedAt = 0;         // 開始した時刻（ms）
+  let elapsed = 0;           // 停止時点の経過秒
+  let ticker = null;
+  let lastPour = null;       // 直前に表示していた投（切り替わり検出用）
+
+  const currentTime = () => state === 'running' ? (performance.now() - startedAt) / 1000 : elapsed;
+
+  function render() {
+    const t = currentTime();
+    const pourIdx = pourIndexAt(t);
+    view.render({ state, t, pourIdx });
+    if (state === 'running' && lastPour !== null && pourIdx !== lastPour) view.flash();
+    lastPour = pourIdx;
+  }
+
+  async function start() {
+    if (state === 'running') return;
+    keepAwake.on();                        // タップと同じ処理の中で始める（iOS対策）
+    await sound.ready();
+    if (state === 'running') return;       // 待っている間に二重で押された場合
+
+    sound.cancelAll();
+    startedAt = performance.now();
+    sound.scheduleAll();
+    state = 'running';
+    lastPour = null;
+    clearInterval(ticker);
+    ticker = setInterval(render, 100);
+    render();
+
+    if (!sound.supported) {
+      $('note').textContent = 'この環境では音を鳴らせません。画面の表示で確認してください。';
+    }
+  }
+
+  function stop() {
+    if (state !== 'running') return;
+    elapsed = currentTime();
+    state = 'stopped';
+    clearInterval(ticker);
+    sound.cancelAll();
+    sound.playStop();
+    keepAwake.off();
+    render();
+  }
+
+  function reset() {
+    clearInterval(ticker);
+    sound.cancelAll();
+    keepAwake.off();
+    state = 'idle';
+    elapsed = 0;
+    lastPour = null;
+    render();
+  }
+
+  function changeDose(delta) {
+    if (state === 'running') return;
+    dose = Math.min(DOSE.max, Math.max(DOSE.min, dose + delta));
+    saveDose();
+    render();
+  }
+
+  /* ==================================================================
+   * 起動
+   * ================================================================== */
+
+  $('btnStart').addEventListener('click', start);
+  $('btnStop').addEventListener('click', stop);
+  $('btnReset').addEventListener('click', reset);
+  $('btnTest').addEventListener('click', () => sound.test());
+  $('doseDown').addEventListener('click', () => changeDose(-1));
+  $('doseUp').addEventListener('click', () => changeDose(1));
+
+  // 画面に戻ってきたとき、計測中なら画面ロックを取り直して表示を更新する
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state === 'running') {
+      keepAwake.on();
+      render();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
