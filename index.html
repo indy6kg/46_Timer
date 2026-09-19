@@ -257,6 +257,7 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
 
   // 音の設定
   const SOUND = {
+    volume: 0.6,           // 全体の音量（0〜1）。大きい／小さいと感じたらここだけ調整する
     signalFreq: 1047,      // 開始・投の切り替え（ド）
     stopFreq: 784,         // 停止（ソ・低め）
     signalGap: 0.34,       // 2回鳴らすときの間隔（秒）
@@ -334,7 +335,7 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
     function beep(when, freq, dur) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const v = SOUND.beepVolume;
+      const v = SOUND.beepVolume * SOUND.volume;
       osc.type = 'square';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, when);
@@ -349,7 +350,8 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
 
     // やさしいチャイム音（基音＋2倍音。やわらかく立ち上がり、余韻を残して消える）
     function chime(when, freq) {
-      const { peak, attack, hold, decay, partials } = SOUND.chime;
+      const { attack, hold, decay, partials } = SOUND.chime;
+      const peak = SOUND.chime.peak * SOUND.volume;
       const master = ctx.createGain();
       master.gain.setValueAtTime(0.0001, when);
       master.gain.linearRampToValueAtTime(peak, when + attack);
