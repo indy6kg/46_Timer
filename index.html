@@ -7,27 +7,24 @@
 <meta name="apple-mobile-web-app-title" content="4:6タイマー">
 <title>4:6メソッド タイマー</title>
 <style>
+  /* ===== 配色（ライト／ダーク） ===== */
   :root {
     --bg: #ECEFF1;
-    --surface: #FFFFFF;
     --ink: #2B1E18;
     --muted: #6B6058;
-    --line: #CDD3D8;
-    --blue: #2E5E8E;
+    --blue: #2E5E8E;         /* 前半：甘み・酸味 */
     --blue-track: #CFDCEA;
-    --brown: #8A5330;
+    --brown: #8A5330;        /* 後半：濃度 */
     --brown-track: #E0D6CE;
     --on-blue: #FFFFFF;
-    --flash: #FFF0B8;
+    --flash: #FFF0B8;        /* 投の切り替わりで一瞬光る色 */
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    :root {
       --bg: #1B1512;
-      --surface: #271E1A;
       --ink: #F0E8E2;
       --muted: #A9998E;
-      --line: #3B302A;
       --blue: #7FAEDD;
       --blue-track: #2B3B4B;
       --brown: #C58A5E;
@@ -37,29 +34,15 @@
       color-scheme: dark;
     }
   }
-  :root[data-theme="dark"] {
-    --bg: #1B1512;
-    --surface: #271E1A;
-    --ink: #F0E8E2;
-    --muted: #A9998E;
-    --line: #3B302A;
-    --blue: #7FAEDD;
-    --blue-track: #2B3B4B;
-    --brown: #C58A5E;
-    --brown-track: #3A2E27;
-    --on-blue: #10202F;
-    --flash: #4A3B12;
-    color-scheme: dark;
-  }
 
+  /* ===== 全体 ===== */
   :root {
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
   *, *::before, *::after { box-sizing: inherit; }
-
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
   body {
     margin: 0;
     height: 100%;
@@ -70,7 +53,6 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
-
   main {
     min-height: 100%;
     max-width: 480px;
@@ -80,17 +62,20 @@
     flex-direction: column;
   }
 
-  /* ---- 何投目か（主役） ---- */
+  /* 前半(a)・後半(b)の色。バー・凡例・説明文で共通に使う */
+  .a { --tone: var(--blue);  --track: var(--blue-track); }
+  .b { --tone: var(--brown); --track: var(--brown-track); }
+
+  /* ===== 何投目か（主役） ===== */
   .pour {
     padding: 8px 12px 14px;
     border-radius: 18px;
     text-align: center;
-    transition: color .2s;
   }
   .pour.flash { animation: flash 0.9s ease-out; }
   @keyframes flash {
-    0%   { background: var(--flash); }
-    100% { background: transparent; }
+    from { background: var(--flash); }
+    to   { background: transparent; }
   }
   .pour-num {
     display: flex;
@@ -100,25 +85,23 @@
     font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
     line-height: 1;
   }
+  .pour.idle .pour-num { color: var(--muted); }
   .pour-num .n {
     font-size: clamp(120px, 40vw, 190px);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  .pour-num .u { font-size: clamp(30px, 9vw, 42px); font-weight: 600; }
+  .pour-num .u    { font-size: clamp(30px, 9vw, 42px); font-weight: 600; }
   .pour-num .done { font-size: clamp(56px, 18vw, 84px); font-weight: 600; padding: 30px 0 22px; }
-  .pour.idle .pour-num { color: var(--muted); }
   .phase {
     margin: 6px 0 0;
+    min-height: 1.5em;
     font-size: 16px;
     font-weight: 600;
-    color: var(--muted);
-    min-height: 1.5em;
+    color: var(--tone, var(--muted));
   }
-  .phase.a { color: var(--blue); }
-  .phase.b { color: var(--brown); }
 
-  /* ---- 経過時間 ---- */
+  /* ===== 経過時間・次の合図 ===== */
   .time {
     margin-top: 6px;
     text-align: center;
@@ -129,108 +112,85 @@
     letter-spacing: -0.02em;
     line-height: 1.1;
   }
-
   .next {
     margin-top: 4px;
+    min-height: 1.6em;
     text-align: center;
     font-size: 16px;
     color: var(--muted);
-    min-height: 1.6em;
   }
   .next b {
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-    font-size: 20px;
     margin-left: 6px;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
   }
 
-  /* ---- タイムライン ---- */
-  .timeline {
-    display: flex;
-    gap: 4px;
-    margin-top: 26px;
-  }
+  /* ===== タイムライン ===== */
+  .timeline { display: flex; gap: 4px; margin-top: 26px; }
   .cell { min-width: 0; }
   .bar {
     position: relative;
     height: 16px;
     border-radius: 8px;
     overflow: hidden;
+    background: var(--track);
   }
-  .cell.a .bar { background: var(--blue-track); }
-  .cell.b .bar { background: var(--brown-track); }
-  .fill { position: absolute; inset: 0 auto 0 0; width: 0; }
-  .cell.a .fill { background: var(--blue); }
-  .cell.b .fill { background: var(--brown); }
+  .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--tone); }
   .lab {
-    margin-top: 8px;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
+    margin-top: 8px;
     font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
   }
-  .lab .k { font-size: 16px; font-weight: 700; margin-right: 4px; }
+  .lab .k { margin-right: 4px; font-size: 16px; font-weight: 700; }
   .cell.now .lab { color: var(--ink); }
   .cell.now .lab .k { font-size: 20px; }
-  .legend {
-    display: flex;
-    gap: 16px;
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--muted);
-  }
+
+  .legend { display: flex; gap: 16px; margin-top: 12px; font-size: 13px; color: var(--muted); }
   .legend i {
     display: inline-block;
-    width: 10px; height: 10px;
-    border-radius: 5px;
+    width: 10px;
+    height: 10px;
     margin-right: 6px;
-    vertical-align: baseline;
+    border-radius: 5px;
+    background: var(--tone);
   }
 
-  /* ---- 操作 ---- */
-  .controls {
-    margin-top: auto;
-    padding-top: 28px;
-    display: flex;
-    gap: 12px;
-  }
+  /* ===== 操作 ===== */
+  .controls { display: flex; gap: 12px; margin-top: auto; padding-top: 28px; }
   .btn {
     flex: 1;
     min-height: 68px;
+    border: 2px solid var(--ink);
     border-radius: 16px;
+    background: transparent;
+    color: var(--ink);
     font: inherit;
     font-size: 24px;
     font-weight: 700;
     cursor: pointer;
-    border: 2px solid var(--ink);
-    background: transparent;
-    color: var(--ink);
   }
   .btn.start { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
   .btn:disabled { opacity: .3; cursor: default; }
   .btn:focus-visible, .link:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 
-  .foot {
-    margin-top: 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
   .link {
+    padding: 10px 4px;
+    border: 0;
+    background: none;
+    color: var(--ink);
     font: inherit;
     font-size: 15px;
-    color: var(--ink);
-    background: none;
-    border: 0;
-    padding: 10px 4px;
     text-decoration: underline;
     text-underline-offset: 3px;
     cursor: pointer;
   }
-  .note { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .note { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
 
   @media (prefers-reduced-motion: reduce) {
     .pour.flash { animation: none; }
@@ -240,17 +200,17 @@
 <body>
 <main>
   <section class="pour idle" id="pour">
-    <div class="pour-num" id="pourNum"><span class="n">1</span><span class="u">投目</span></div>
-    <p class="phase" id="phase" aria-live="polite">開始を押すと計測がはじまります</p>
+    <div class="pour-num" id="pourNum"></div>
+    <p class="phase" id="phase" aria-live="polite"></p>
   </section>
 
-  <div class="time" id="time" role="timer" aria-label="経過時間">0:00</div>
+  <div class="time" id="time" role="timer" aria-label="経過時間"></div>
   <div class="next" id="next"></div>
 
-  <div class="timeline" id="tl" aria-hidden="true"></div>
+  <div class="timeline" id="timeline" aria-hidden="true"></div>
   <div class="legend" aria-hidden="true">
-    <span><i style="background:var(--blue)"></i>前半 甘み・酸味</span>
-    <span><i style="background:var(--brown)"></i>後半 濃度</span>
+    <span class="a"><i></i>前半 甘み・酸味</span>
+    <span class="b"><i></i>後半 濃度</span>
   </div>
 
   <div class="controls">
@@ -265,284 +225,404 @@
   <p class="note" id="note">音が出ないときは、iPhoneの消音スイッチ（側面）をオフにして、音量を上げてください。</p>
 </main>
 
+<!-- NoSleep.js (MIT License) の無音動画。iOSで画面のスリープを防ぐために使う -->
 <script>
-(function () {
-  // ---- 4:6メソッドのスケジュール（秒） ----
-  var SEGS = [
-    { s: 0,   e: 45,  g: 'a' },  // 1投目
-    { s: 45,  e: 90,  g: 'a' },  // 2投目
-    { s: 90,  e: 135, g: 'b' },  // 3投目
-    { s: 135, e: 165, g: 'b' },  // 4投目
-    { s: 165, e: 210, g: 'b' }   // 5投目
+const NOSLEEP_MP4 = "data:video/mp4;base64,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";
+</script>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ==================================================================
+   * 設定
+   * ================================================================== */
+
+  // 4:6メソッドの抽出スケジュール（秒）
+  //   phase: 'a' = 前半40%（甘み・酸味を決める） / 'b' = 後半60%（濃度を決める）
+  const POURS = [
+    { start: 0,   end: 45,  phase: 'a' },   // 1投目
+    { start: 45,  end: 90,  phase: 'a' },   // 2投目
+    { start: 90,  end: 135, phase: 'b' },   // 3投目
+    { start: 135, end: 165, phase: 'b' },   // 4投目
+    { start: 165, end: 210, phase: 'b' },   // 5投目
   ];
-  var END = 210;                       // 3:30
-  var BEEPS = [45, 90, 135, 165];      // 各投の切り替え合図（2投目〜5投目）
+  const FINISH = 210;                                   // 3:30 抽出終了
+  const DONE = POURS.length;                            // 「抽出完了」を表すインデックス
+  const POUR_CHANGES = POURS.slice(1).map(p => p.start); // 投の切り替え合図：45・90・135・165秒
+  const PHASE_TEXT = {
+    a: '甘み・酸味を決める（前半40%）',
+    b: '濃度を決める（後半60%）',
+  };
 
-  var $ = function (id) { return document.getElementById(id); };
-  var elPour = $('pour'), elNum = $('pourNum'), elPhase = $('phase');
-  var elTime = $('time'), elNext = $('next'), elTl = $('tl');
-  var btnStart = $('btnStart'), btnStop = $('btnStop');
+  // 音の設定
+  const SOUND = {
+    signalFreq: 1047,      // 開始・投の切り替え（ド）
+    stopFreq: 784,         // 停止（ソ・低め）
+    signalGap: 0.34,       // 2回鳴らすときの間隔（秒）
+    lead: 0.02,            // 「今すぐ鳴らす」ときの遅延（秒）
+    chime: { peak: 0.85, attack: 0.015, hold: 0.07, decay: 0.32,
+             partials: [{ ratio: 1, level: 1 }, { ratio: 2, level: 0.22 }] },
+    beepVolume: 0.9,       // 終了音の音量（最大 1.0）
+    finishNotes: [         // 終了音：ド・ミ・ソと上がり、最後を長めに
+      { at: 0.00, freq: 1047, dur: 0.15 },
+      { at: 0.20, freq: 1319, dur: 0.15 },
+      { at: 0.40, freq: 1568, dur: 0.60 },
+    ],
+  };
 
-  function fmt(sec) {
+  /* ==================================================================
+   * ユーティリティ
+   * ================================================================== */
+
+  const $ = id => document.getElementById(id);
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  // 失敗しても止まらないように包む（Promiseを返さない古いAPIにも対応）
+  const quiet = fn => {
+    try { return Promise.resolve(fn()).catch(() => {}); }
+    catch (e) { return Promise.resolve(); }
+  };
+
+  // 秒 → m:ss
+  const formatTime = sec => {
     sec = Math.max(0, Math.floor(sec));
-    var m = Math.floor(sec / 60), s = sec % 60;
-    return m + ':' + (s < 10 ? '0' : '') + s;
-  }
+    const s = sec % 60;
+    return `${Math.floor(sec / 60)}:${s < 10 ? '0' : ''}${s}`;
+  };
 
-  // ---- タイムライン生成 ----
-  var cells = SEGS.map(function (seg, i) {
-    var c = document.createElement('div');
-    c.className = 'cell ' + seg.g;
-    c.style.flex = (seg.e - seg.s) + ' 1 0';
-    var endLabel = (i === SEGS.length - 1) ? '<span>' + fmt(END) + '</span>' : '';
-    c.innerHTML =
-      '<div class="bar"><div class="fill"></div></div>' +
-      '<div class="lab"><span><span class="k">' + (i + 1) + '</span>' + fmt(seg.s) + '</span>' + endLabel + '</div>';
-    elTl.appendChild(c);
-    return { el: c, fill: c.querySelector('.fill'), seg: seg };
-  });
+  // 内容が変わったときだけ書き換える（無駄な再描画と読み上げを避ける）
+  const setHTML = (el, html) => {
+    if (el._html !== html) { el._html = html; el.innerHTML = html; }
+  };
 
-  // ---- 音 ----
-  var ctx = null, nodes = [], audioOK = true;
-
-  function ensureAudio() {
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
-    if (!ctx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) { audioOK = false; return null; }
-      try { ctx = new AC(); } catch (e) { audioOK = false; return null; }
-    }
-    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
-    return ctx;
-  }
-
-  var VOL = 0.9;   // 音量（最大 1.0）
-  function beepAt(when, freq, dur) {
-    var o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = 'square';                       // 正弦波より大きく聞こえる音色
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(VOL, when + 0.005);
-    g.gain.setValueAtTime(VOL, when + dur - 0.02);   // 終わりぎわまで音量を保つ
-    g.gain.linearRampToValueAtTime(0.0001, when + dur);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(when);
-    o.stop(when + dur + 0.05);
-    nodes.push(o);
-  }
-
-  // すべての合図は「ピッ、ピッ」と2回鳴らす
-  function beep2(when, freq) {
-    beepAt(when, freq, 0.18);
-    beepAt(when + 0.26, freq, 0.18);
-  }
-
-  function scheduleBeeps(base) {
-    beep2(base, 1320);                                   // 開始
-    BEEPS.forEach(function (t) { beep2(base + t, 1320); }); // 45秒・1:30・2:15・2:45
-    beep2(base + END, 880);                             // 3:30 終了（低めの音）
-  }
-
-  function clearBeeps() {
-    nodes.forEach(function (o) { try { o.stop(); } catch (e) {} try { o.disconnect(); } catch (e) {} });
-    nodes = [];
-  }
-
-  // ---- 画面を消さない ----
-  // 標準のWake Lock APIと、音なし動画を流し続ける方式（NoSleep.js, MIT License）を併用する。
-  // iOSのホーム画面アプリではWake Lockが効かない版があるため、動画方式で補う。
-  var wl = null, sleepVideo = null;
-  var NOSLEEP_MP4 = "data:video/mp4;base64,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";
-
-  function getVideo() {
-    if (sleepVideo) return sleepVideo;
-    var v = document.createElement('video');
-    v.setAttribute('playsinline', '');
-    v.setAttribute('muted', '');
-    v.setAttribute('title', 'No Sleep');
-    v.muted = true;
-    var s = document.createElement('source');
-    s.src = NOSLEEP_MP4;
-    s.type = 'video/mp4';
-    v.appendChild(s);
-    v.addEventListener('loadedmetadata', function () {
-      v.addEventListener('timeupdate', function () {
-        if (v.currentTime > 0.5) v.currentTime = Math.random();
-      });
-    });
-    sleepVideo = v;
-    return v;
-  }
-
-  function lock() {
-    try {
-      if ('wakeLock' in navigator) {
-        navigator.wakeLock.request('screen').then(function (l) { wl = l; }, function () {});
-      }
-    } catch (e) {}
-    try {
-      var p = getVideo().play();
-      if (p && p.catch) p.catch(function () {});
-    } catch (e) {}
-  }
-  function unlock() {
-    try { if (wl) wl.release(); } catch (e) {}
-    wl = null;
-    try { if (sleepVideo) sleepVideo.pause(); } catch (e) {}
-  }
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') {
-      if (state === 'running') { lock(); tick(); }
-    }
-  });
-
-  // ---- 状態 ----
-  var state = 'idle';       // idle | running | stopped
-  var t0 = 0, elapsed = 0, timer = null, lastPour = -2;
-
-  function pourIndex(t) {
-    if (t >= END) return 5;  // 完了
-    for (var i = SEGS.length - 1; i >= 0; i--) if (t >= SEGS[i].s) return i;
+  // 経過秒 → 今何投目か（0始まり。終了後は DONE）
+  const pourIndexAt = t => {
+    if (t >= FINISH) return DONE;
+    for (let i = POURS.length - 1; i > 0; i--) if (t >= POURS[i].start) return i;
     return 0;
-  }
+  };
 
-  var cache = {};
-  function setHTML(el, key, html) {
-    if (cache[key] !== html) { cache[key] = html; el.innerHTML = html; }
-  }
-  function setText(el, key, text) {
-    if (cache[key] !== text) { cache[key] = text; el.textContent = text; }
-  }
+  /* ==================================================================
+   * 音（Web Audio）
+   * ================================================================== */
 
-  function render(t) {
-    var p = pourIndex(t);
+  const sound = (() => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let ctx = null;
+    let nodes = [];                       // 予約済みの音（停止時にまとめて取り消す）
 
-    // 何投目か
-    if (p >= 5 && state !== 'idle') {
-      setHTML(elNum, 'num', '<span class="done">抽出完了</span>');
-      setText(elPhase, 'phase', 'ドリッパーを外しましょう');
-      elPhase.className = 'phase';
-    } else {
-      var shown = (state === 'idle') ? 0 : p;
-      setHTML(elNum, 'num', '<span class="n">' + (shown + 1) + '</span><span class="u">投目</span>');
+    const isRunning = () => !!ctx && ctx.state === 'running';
+
+    // AudioContextを用意する。iOSではタップと同じ処理の中で呼ぶ必要がある
+    function getContext() {
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}  // 消音スイッチ対策
+      if (!ctx && AudioCtx) { try { ctx = new AudioCtx(); } catch (e) {} }
+      if (ctx && ctx.state === 'suspended') quiet(() => ctx.resume());
+      return ctx;
+    }
+
+    // 音が鳴らせる状態になるのを待つ（最大0.5秒）。鳴らせなければ null
+    async function ready() {
+      const c = getContext();
+      if (!c) return null;
+      if (c.state !== 'running') await Promise.race([quiet(() => c.resume()), wait(500)]);
+      return isRunning() ? c : null;
+    }
+
+    // 角ばったビープ（終了音用）
+    function beep(when, freq, dur) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const v = SOUND.beepVolume;
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, when);
+      gain.gain.linearRampToValueAtTime(v, when + 0.005);
+      gain.gain.setValueAtTime(v, when + dur - 0.02);       // 終わりぎわまで音量を保つ
+      gain.gain.linearRampToValueAtTime(0.0001, when + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(when);
+      osc.stop(when + dur + 0.05);
+      nodes.push(osc);
+    }
+
+    // やさしいチャイム音（基音＋2倍音。やわらかく立ち上がり、余韻を残して消える）
+    function chime(when, freq) {
+      const { peak, attack, hold, decay, partials } = SOUND.chime;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, when);
+      master.gain.linearRampToValueAtTime(peak, when + attack);
+      master.gain.setValueAtTime(peak, when + hold);
+      master.gain.exponentialRampToValueAtTime(0.001, when + decay);
+      master.connect(ctx.destination);
+
+      const total = partials.reduce((sum, p) => sum + p.level, 0);
+      partials.forEach(p => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq * p.ratio;
+        gain.gain.value = p.level / total;
+        osc.connect(gain); gain.connect(master);
+        osc.start(when);
+        osc.stop(when + decay + 0.04);
+        nodes.push(osc);
+      });
+    }
+
+    // 「ポン、ポン」と2回
+    function signal(when, freq = SOUND.signalFreq) {
+      chime(when, freq);
+      chime(when + SOUND.signalGap, freq);
+    }
+
+    // 終了の合図
+    function finish(when) {
+      SOUND.finishNotes.forEach(n => beep(when + n.at, n.freq, n.dur));
+    }
+
+    return {
+      supported: !!AudioCtx,
+      ready,
+
+      // 開始時に、開始音・各投の合図・終了音をまとめて予約する（画面が暗くなってもずれない）
+      scheduleAll() {
+        if (!isRunning()) return;
+        const base = ctx.currentTime;
+        signal(base);
+        POUR_CHANGES.forEach(t => signal(base + t));
+        finish(base + FINISH);
+      },
+
+      cancelAll() {
+        nodes.forEach(osc => {
+          try { osc.stop(); } catch (e) {}
+          try { osc.disconnect(); } catch (e) {}
+        });
+        nodes = [];
+      },
+
+      playStop() { if (isRunning()) signal(ctx.currentTime + SOUND.lead, SOUND.stopFreq); },
+
+      async test() {
+        if (await ready()) signal(ctx.currentTime + SOUND.lead);
+      },
+    };
+  })();
+
+  /* ==================================================================
+   * 画面を消さない
+   *   標準の Wake Lock API と、音なし動画を流し続ける方式（NoSleep.js）を併用。
+   *   iOSのホーム画面アプリでは Wake Lock が効かない版があるため、動画方式で補う。
+   * ================================================================== */
+
+  const keepAwake = (() => {
+    let wakeLock = null;
+    let video = null;
+
+    function getVideo() {
+      if (video) return video;
+      video = document.createElement('video');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('muted', '');
+      video.setAttribute('title', 'No Sleep');
+      video.muted = true;
+      const source = document.createElement('source');
+      source.src = NOSLEEP_MP4;
+      source.type = 'video/mp4';
+      video.appendChild(source);
+      video.addEventListener('loadedmetadata', () => {
+        video.addEventListener('timeupdate', () => {      // 終わりに達しないよう再生位置を戻し続ける
+          if (video.currentTime > 0.5) video.currentTime = Math.random();
+        });
+      });
+      return video;
+    }
+
+    return {
+      on() {
+        if ('wakeLock' in navigator) {
+          quiet(() => navigator.wakeLock.request('screen').then(lock => { wakeLock = lock; }));
+        }
+        quiet(() => getVideo().play());
+      },
+      off() {
+        if (wakeLock) quiet(() => wakeLock.release());
+        wakeLock = null;
+        if (video) video.pause();
+      },
+    };
+  })();
+
+  /* ==================================================================
+   * 画面表示
+   * ================================================================== */
+
+  const view = (() => {
+    const el = {
+      pour: $('pour'), pourNum: $('pourNum'), phase: $('phase'),
+      time: $('time'), next: $('next'),
+      start: $('btnStart'), stop: $('btnStop'),
+    };
+
+    // タイムライン（5つのバー）を作る
+    const cells = POURS.map((pour, i) => {
+      const cell = document.createElement('div');
+      cell.className = `cell ${pour.phase}`;
+      cell.style.flex = `${pour.end - pour.start} 1 0`;    // 長さに比例した幅
+      const endLabel = i === POURS.length - 1 ? `<span>${formatTime(FINISH)}</span>` : '';
+      cell.innerHTML =
+        '<div class="bar"><div class="fill"></div></div>' +
+        `<div class="lab"><span><span class="k">${i + 1}</span>${formatTime(pour.start)}</span>${endLabel}</div>`;
+      $('timeline').appendChild(cell);
+      return { cell, fill: cell.querySelector('.fill'), pour };
+    });
+
+    function renderPour(state, pourIdx) {
+      el.pour.classList.toggle('idle', state === 'idle');
+
+      if (state !== 'idle' && pourIdx === DONE) {
+        setHTML(el.pourNum, '<span class="done">抽出完了</span>');
+        setHTML(el.phase, 'ドリッパーを外しましょう');
+        el.phase.className = 'phase';
+        return;
+      }
+      const shown = state === 'idle' ? 0 : pourIdx;
+      setHTML(el.pourNum, `<span class="n">${shown + 1}</span><span class="u">投目</span>`);
       if (state === 'idle') {
-        setText(elPhase, 'phase', '開始を押すと計測がはじまります');
-        elPhase.className = 'phase';
+        setHTML(el.phase, '開始を押すと計測がはじまります');
+        el.phase.className = 'phase';
       } else {
-        var g = SEGS[shown].g;
-        setText(elPhase, 'phase', g === 'a' ? '甘み・酸味を決める（前半40%）' : '濃度を決める（後半60%）');
-        elPhase.className = 'phase ' + g;
+        const phase = POURS[shown].phase;
+        setHTML(el.phase, PHASE_TEXT[phase]);
+        el.phase.className = `phase ${phase}`;
       }
     }
-    elPour.classList.toggle('idle', state === 'idle');
 
-    // 切り替わりの一瞬だけハイライト（音が出せない時の保険）
-    if (state === 'running' && p !== lastPour && lastPour !== -2) {
-      elPour.classList.remove('flash');
-      void elPour.offsetWidth;
-      elPour.classList.add('flash');
+    function renderNext(state, pourIdx, t) {
+      let html;
+      if (state === 'idle') {
+        html = '合図：' + [...POUR_CHANGES, FINISH].map(formatTime).join(' / ');
+      } else if (state === 'stopped') {
+        html = '停止中';
+      } else if (pourIdx === DONE) {
+        html = `${formatTime(FINISH)}を過ぎました。落ち切ったら停止`;
+      } else {
+        const isLast = pourIdx === DONE - 1;
+        const target = isLast ? FINISH : POURS[pourIdx].end;
+        const label = isLast ? '終了まで' : `${pourIdx + 2}投目まで`;
+        html = `${label}<b>${formatTime(Math.ceil(target - t))}</b>`;
+      }
+      setHTML(el.next, html);
     }
-    lastPour = p;
 
-    // 時間
-    setText(elTime, 'time', fmt(t));
-
-    // 次の合図
-    var nextHTML;
-    if (state === 'idle') {
-      nextHTML = '合図：0:45 / 1:30 / 2:15 / 2:45 / 3:30';
-    } else if (state === 'stopped') {
-      nextHTML = '停止中';
-    } else if (p >= 5) {
-      nextHTML = '3:30を過ぎました。落ち切ったら停止';
-    } else {
-      var target = (p < 4) ? SEGS[p].e : END;
-      var label = (p < 4) ? (p + 2) + '投目まで' : '終了まで';
-      nextHTML = label + '<b>' + fmt(Math.ceil(target - t)) + '</b>';
+    function renderTimeline(state, pourIdx, t) {
+      cells.forEach(({ cell, fill, pour }, i) => {
+        const ratio = state === 'idle' ? 0 : Math.min(1, Math.max(0, (t - pour.start) / (pour.end - pour.start)));
+        fill.style.width = `${(ratio * 100).toFixed(2)}%`;
+        cell.classList.toggle('now', state !== 'idle' && pourIdx === i);
+      });
     }
-    setHTML(elNext, 'next', nextHTML);
 
-    // タイムライン
-    cells.forEach(function (c, i) {
-      var seg = c.seg;
-      var ratio = state === 'idle' ? 0 : Math.min(1, Math.max(0, (t - seg.s) / (seg.e - seg.s)));
-      c.fill.style.width = (ratio * 100).toFixed(2) + '%';
-      c.el.classList.toggle('now', state !== 'idle' && p === i);
-    });
-  }
+    return {
+      render(state, t, pourIdx) {
+        renderPour(state, pourIdx);
+        setHTML(el.time, formatTime(t));
+        renderNext(state, pourIdx, t);
+        renderTimeline(state, pourIdx, t);
+        el.start.disabled = state === 'running';
+        el.stop.disabled = state !== 'running';
+      },
 
-  function tick() {
-    var t = state === 'running' ? (performance.now() - t0) / 1000 : elapsed;
-    render(t);
-  }
-
-  function updateButtons() {
-    btnStart.disabled = state === 'running';
-    btnStop.disabled = state !== 'running';
-  }
-
-  function start() {
-    if (state === 'running') return;
-    var c = ensureAudio();   // タップ直後に音を有効化（iOS対策）
-    lock();                  // 同じタップの中で画面スリープ防止を開始
-    var go = function () {
-      if (state === 'running') return;
-      clearBeeps();
-      t0 = performance.now();
-      if (c && c.state === 'running') scheduleBeeps(c.currentTime);
-      state = 'running';
-      lastPour = -2;
-      updateButtons();
-      clearInterval(timer);
-      timer = setInterval(tick, 100);
-      tick();
-      if (!audioOK) document.getElementById('note').textContent = 'この環境では音を鳴らせません。画面の表示で確認してください。';
+      // 投が切り替わった一瞬だけ背景を光らせる（音が出せないときの保険）
+      flash() {
+        el.pour.classList.remove('flash');
+        void el.pour.offsetWidth;          // アニメーションを最初からやり直すため
+        el.pour.classList.add('flash');
+      },
     };
-    if (c && c.state !== 'running') {
-      var done = false;
-      var once = function () { if (!done) { done = true; go(); } };
-      try { c.resume().then(once, once); } catch (e) { once(); }
-      setTimeout(once, 500);
-    } else {
-      go();
+  })();
+
+  /* ==================================================================
+   * タイマー本体
+   * ================================================================== */
+
+  let state = 'idle';        // idle（待機） | running（計測中） | stopped（停止）
+  let startedAt = 0;         // 開始した時刻（ms）
+  let elapsed = 0;           // 停止時点の経過秒
+  let ticker = null;
+  let lastPour = null;       // 直前に表示していた投（切り替わり検出用）
+
+  const currentTime = () => state === 'running' ? (performance.now() - startedAt) / 1000 : elapsed;
+
+  function render() {
+    const t = currentTime();
+    const pourIdx = pourIndexAt(t);
+    view.render(state, t, pourIdx);
+    if (state === 'running' && lastPour !== null && pourIdx !== lastPour) view.flash();
+    lastPour = pourIdx;
+  }
+
+  async function start() {
+    if (state === 'running') return;
+    keepAwake.on();                        // タップと同じ処理の中で始める（iOS対策）
+    await sound.ready();
+    if (state === 'running') return;       // 待っている間に二重で押された場合
+
+    sound.cancelAll();
+    startedAt = performance.now();
+    sound.scheduleAll();
+    state = 'running';
+    lastPour = null;
+    clearInterval(ticker);
+    ticker = setInterval(render, 100);
+    render();
+
+    if (!sound.supported) {
+      $('note').textContent = 'この環境では音を鳴らせません。画面の表示で確認してください。';
     }
   }
 
   function stop() {
     if (state !== 'running') return;
-    elapsed = (performance.now() - t0) / 1000;
+    elapsed = currentTime();
     state = 'stopped';
-    clearInterval(timer);
-    clearBeeps();
-    if (ctx && ctx.state === 'running') beep2(ctx.currentTime + 0.02, 880); // 停止音
-    unlock();
-    updateButtons();
-    tick();
+    clearInterval(ticker);
+    sound.cancelAll();
+    sound.playStop();
+    keepAwake.off();
+    render();
   }
 
   function reset() {
-    clearInterval(timer);
-    clearBeeps();
-    unlock();
+    clearInterval(ticker);
+    sound.cancelAll();
+    keepAwake.off();
     state = 'idle';
     elapsed = 0;
-    lastPour = -2;
-    updateButtons();
-    tick();
+    lastPour = null;
+    render();
   }
 
-  btnStart.addEventListener('click', start);
-  btnStop.addEventListener('click', stop);
+  /* ==================================================================
+   * 起動
+   * ================================================================== */
+
+  $('btnStart').addEventListener('click', start);
+  $('btnStop').addEventListener('click', stop);
   $('btnReset').addEventListener('click', reset);
-  $('btnTest').addEventListener('click', function () {
-    var c = ensureAudio();
-    if (!c) return;
-    var play = function () { beep2(c.currentTime + 0.05, 1320); };
-    if (c.state === 'running') play();
-    else { try { c.resume().then(play, play); } catch (e) { play(); } }
+  $('btnTest').addEventListener('click', () => sound.test());
+
+  // 画面に戻ってきたとき、計測中なら画面ロックを取り直して表示を更新する
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state === 'running') {
+      keepAwake.on();
+      render();
+    }
   });
 
-  tick();
+  render();
 })();
 </script>
 </body>
