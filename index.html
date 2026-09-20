@@ -81,7 +81,7 @@
   }
   .ring {
     position: relative;
-    width: min(70vw, 260px);
+    width: min(76vw, 290px);
     aspect-ratio: 1;
     margin: 0 auto;
   }
@@ -93,22 +93,13 @@
     position: absolute;
     inset: 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
   }
-  .rc-n { font-size: clamp(20px, 6vw, 26px); font-weight: 700; color: var(--tone, var(--muted)); }
-  .rc-v {
-    font-size: clamp(56px, 18vw, 76px);
-    font-weight: 600;
-    line-height: 1.05;
-    font-variant-numeric: tabular-nums;
-  }
-  .rc-v small { margin-left: 4px; font-size: 0.32em; font-weight: 600; }
-  .rc-s { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .pour.idle .rc-v { color: var(--muted); }
-  .pour.done .rc-n { color: var(--ink); }
+  .rc-n { font-size: clamp(110px, 36vw, 150px); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .rc-u { margin-left: 4px; font-size: clamp(30px, 9vw, 40px); font-weight: 600; }
+  .rc-done { font-size: clamp(32px, 10vw, 42px); font-weight: 600; }
+  .pour.idle .ring-center { color: var(--muted); }
 
   .phase {
     margin: 8px 0 0;
@@ -167,33 +158,6 @@
   .cell.now .lab { color: var(--ink); }
   .cell.now .lab .k { font-size: 20px; }
 
-  /* ===== 粉量 ===== */
-  .dose {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 16px;
-    font-variant-numeric: tabular-nums;
-  }
-  .dose-l { font-size: 14px; color: var(--muted); }
-  .dose-v { min-width: 3.2em; text-align: center; font-size: 22px; font-weight: 700; }
-  .dose-w { margin-left: 6px; font-size: 14px; color: var(--muted); }
-  .step {
-    width: 44px;
-    height: 44px;
-    border: 2px solid var(--ink);
-    border-radius: 22px;
-    background: transparent;
-    color: var(--ink);
-    font: inherit;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .step:disabled { opacity: .3; cursor: default; }
-  .step:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
-
   /* ===== 操作 ===== */
   .controls { display: flex; gap: 12px; margin-top: auto; padding-top: 20px; }
   .btn {
@@ -248,14 +212,6 @@
   <div class="next" id="next"></div>
 
   <div class="timeline" id="timeline" aria-hidden="true"></div>
-  <div class="dose">
-    <span class="dose-l">粉量</span>
-    <button class="step" id="doseDown" aria-label="粉量を1g減らす">−</button>
-    <span class="dose-v" id="doseVal"></span>
-    <button class="step" id="doseUp" aria-label="粉量を1g増やす">＋</button>
-    <span class="dose-w" id="doseWater"></span>
-  </div>
-
   <div class="controls">
     <button class="btn start" id="btnStart">開始</button>
     <button class="btn" id="btnStop" disabled>停止</button>
@@ -283,13 +239,12 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
 
   // 4:6メソッドの抽出スケジュール（秒）
   //   phase: 'a' = 前半40%（甘み・酸味を決める） / 'b' = 後半60%（濃度を決める）
-  //   pct  : 湯量全体に対する割合（%）。前半2回で40%、後半3回で60%（各20%ずつ）
   const POURS = [
-    { start: 0,   end: 45,  phase: 'a', pct: 20 },   // 1投目
-    { start: 45,  end: 90,  phase: 'a', pct: 20 },   // 2投目
-    { start: 90,  end: 135, phase: 'b', pct: 20 },   // 3投目
-    { start: 135, end: 165, phase: 'b', pct: 20 },   // 4投目
-    { start: 165, end: 210, phase: 'b', pct: 20 },   // 5投目
+    { start: 0,   end: 45,  phase: 'a' },   // 1投目
+    { start: 45,  end: 90,  phase: 'a' },   // 2投目
+    { start: 90,  end: 135, phase: 'b' },   // 3投目
+    { start: 135, end: 165, phase: 'b' },   // 4投目
+    { start: 165, end: 210, phase: 'b' },   // 5投目
   ];
   const FINISH = 210;                                   // 3:30 抽出終了
   const DONE = POURS.length;                            // 「抽出完了」を表すインデックス
@@ -299,31 +254,9 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
     b: '濃度を決める（後半60%）',
   };
 
-  // 粉量と湯量：湯量 = 粉量 × 15（例：20g → 300ml）
-  const WATER_PER_G = 15;
-  const DOSE = { min: 5, max: 60, initial: 20, storeKey: 'v46-dose' };
-
-  let dose = loadDose();                                  // 粉量(g)。前回の設定を覚えておく
-  const totalWater = () => dose * WATER_PER_G;
-  // i投目までの累計湯量。累計から求めるので、端数が出てもずれない
-  const cumulativeWater = i =>
-    Math.round(totalWater() * POURS.slice(0, i + 1).reduce((sum, p) => sum + p.pct, 0) / 100);
-  const pourWater = i => cumulativeWater(i) - (i > 0 ? cumulativeWater(i - 1) : 0);
-
-  function loadDose() {
-    try {
-      const v = parseInt(localStorage.getItem(DOSE.storeKey), 10);
-      if (v >= DOSE.min && v <= DOSE.max) return v;
-    } catch (e) {}
-    return DOSE.initial;
-  }
-  function saveDose() {
-    try { localStorage.setItem(DOSE.storeKey, String(dose)); } catch (e) {}
-  }
-
   // 音の設定
   const SOUND = {
-    volume: 0.6,           // 全体の音量（0〜1）。大きい／小さいと感じたらここだけ調整する
+    volume: 0.45,          // 全体の音量（0〜1）。大きい／小さいと感じたらここだけ調整する
     signalFreq: 1047,      // 開始・投の切り替え（ド）
     stopFreq: 784,         // 停止（ソ・低め）
     signalGap: 0.34,       // 2回鳴らすときの間隔（秒）
@@ -532,7 +465,6 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
       pour: $('pour'), ringArc: $('ringArc'), ringCenter: $('ringCenter'), phase: $('phase'),
       time: $('time'), next: $('next'),
       start: $('btnStart'), stop: $('btnStop'),
-      doseVal: $('doseVal'), doseWater: $('doseWater'), doseDown: $('doseDown'), doseUp: $('doseUp'),
     };
 
     // リング：次の注湯までの残り時間を、円弧の長さで表す
@@ -552,10 +484,7 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
       return { cell, fill: cell.querySelector('.fill'), pour };
     });
 
-    const center = (label, ml, sub) =>
-      `<span class="rc-n">${label}</span><span class="rc-v">${ml}<small>ml</small></span><span class="rc-s">${sub}</span>`;
-
-    // リングの中身：今何投目か・今回注ぐ量・累計
+    // リングの中身：今何投目か（大きく表示）
     function renderPour(state, pourIdx) {
       const idle = state === 'idle';
       const done = !idle && pourIdx === DONE;
@@ -568,10 +497,10 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
       el.pour.classList.toggle('b', !idle && !done && phase === 'b');
 
       if (done) {
-        setHTML(el.ringCenter, center('抽出完了', totalWater(), '合計'));
+        setHTML(el.ringCenter, '<span class="rc-done">抽出完了</span>');
         setHTML(el.phase, 'ドリッパーを外しましょう');
       } else {
-        setHTML(el.ringCenter, center(`${shown + 1}投目`, pourWater(shown), `累計 ${cumulativeWater(shown)}ml`));
+        setHTML(el.ringCenter, `<span><span class="rc-n">${shown + 1}</span><span class="rc-u">投目</span></span>`);
         setHTML(el.phase, idle ? '開始を押すと計測がはじまります' : PHASE_TEXT[phase]);
       }
     }
@@ -613,15 +542,6 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
       });
     }
 
-    function renderDose(state) {
-      setHTML(el.doseVal, `${dose}g`);
-      setHTML(el.doseWater, `湯量 ${totalWater()}ml`);
-      el.doseDown.disabled = state === 'running' || dose <= DOSE.min;   // 計測中は変えられない
-      el.doseUp.disabled = state === 'running' || dose >= DOSE.max;
-    }
-
-    el.pour.addEventListener('animationend', () => el.pour.classList.remove('flash'));
-
     return {
       render({ state, t, pourIdx }) {
         renderPour(state, pourIdx);
@@ -629,7 +549,6 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
         setHTML(el.time, formatTime(t));
         renderNext(state, pourIdx, t);
         renderTimeline(state, pourIdx, t);
-        renderDose(state);
         el.start.disabled = state === 'running';
         el.stop.disabled = state !== 'running';
       },
@@ -704,13 +623,6 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
     render();
   }
 
-  function changeDose(delta) {
-    if (state === 'running') return;
-    dose = Math.min(DOSE.max, Math.max(DOSE.min, dose + delta));
-    saveDose();
-    render();
-  }
-
   /* ==================================================================
    * 起動
    * ================================================================== */
@@ -719,8 +631,6 @@ const NOSLEEP_MP4 = "data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjM
   $('btnStop').addEventListener('click', stop);
   $('btnReset').addEventListener('click', reset);
   $('btnTest').addEventListener('click', () => sound.test());
-  $('doseDown').addEventListener('click', () => changeDose(-1));
-  $('doseUp').addEventListener('click', () => changeDose(1));
 
   // 画面に戻ってきたとき、計測中なら画面ロックを取り直して表示を更新する
   document.addEventListener('visibilitychange', () => {
